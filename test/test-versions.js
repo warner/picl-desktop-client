@@ -7,6 +7,7 @@ exports["test basics"] = function(assert, done) {
     assert.ok(nv1);
     nv1.setKV("key1", "value1");
     nv1.setKV("key2", "value2");
+    nv1.setKV("key3", "value3");
     var v1 = nv1.close();
     assert.ok(v1);
     console.log("v1", v1);
@@ -23,9 +24,9 @@ exports["test basics"] = function(assert, done) {
 
 
     var nv2 = v1.createNextVersion();
-    nv2.setKV("key2", "newvalue2");
-    nv2.setKV("key3", "value3");
     nv2.deleteKey("key1");
+    nv2.setKV("key3", "newvalue3");
+    nv2.setKV("key4", "value4");
     var v2 = nv2.close();
     console.log(v2);
 
@@ -33,8 +34,8 @@ exports["test basics"] = function(assert, done) {
     console.log(delta1to2);
     assert.deepEqual(delta1to2.sort(),
                      [["del", "key1"],
-                      ["set", "key2", "newvalue2"],
-                      ["set", "key3", "value3"]].sort());
+                      ["set", "key3", "encrypted:newvalue3"],
+                      ["set", "key4", "encrypted:value4"]].sort());
 
     /*
     assert.ok(1);
