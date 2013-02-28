@@ -24,6 +24,8 @@ exports["test basics"] = function(assert, done) {
                          ["key3", "encrypted:value3"]];
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
     assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    assert.deepEqual(vs.getVersion(v1.getVerhash()).iterKVs().sort(),
+                     expectedV1.sort());
 
 
     // outbound
@@ -55,7 +57,7 @@ exports["test basics"] = function(assert, done) {
                       ["set", "key3", "encrypted:newvalue3"],
                       ["set", "key4", "encrypted:value4"]].sort());
 
-    // inbound
+    // inbound with a delta
     var nv2a = v1.createNewVersion(v2.getSignedVerhash());
     L.log("nv2a", nv2a);
     for (let delta of delta1to2) {
@@ -67,6 +69,22 @@ exports["test basics"] = function(assert, done) {
     var v2a = nv2a.close();
     L.log("v2a", v2a);
 
+    assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
+    assert.deepEqual(v2a.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
+    assert.deepEqual(v2.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
+    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+
+    // inbound without any delta
+    var nv2b = vs.createNewVersion(v2.getSignedVerhash());
+    for (let KEV of v2.iterKEVs()) {
+        nv2b.setKEV(KEV[0], KEV[1]);
+    }
+    var v2b = nv2b.close();
+
+    assert.deepEqual(v2b.iterKVs().sort(), expectedV2.sort());
+    assert.deepEqual(v2b.iterKEVs().sort(), expectedEV2.sort());
     assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
     assert.deepEqual(v2a.iterKEVs().sort(), expectedEV2.sort());
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
