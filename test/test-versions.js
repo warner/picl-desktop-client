@@ -13,6 +13,7 @@ exports["test basics"] = function(assert, done) {
     L.log("v1", v1);
     L.log("verhash", v1.getVerhash());
     assert.equal(v1.getSeqnum(), 1);
+    assert.strictEqual(v1, vs.getVersion(v1.getVerhash()));
     L.log("signed", v1.getSignedVerhash());
     L.log("v1 again", v1);
 
@@ -38,8 +39,8 @@ exports["test basics"] = function(assert, done) {
     var v2 = nv2.close();
     L.log("v2 is", v2);
 
-    assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    assert.equal(v2.getSeqnum(), 2);
+    assert.strictEqual(v2, vs.getVersion(v2.getVerhash()));
     const expectedV2 = [["key2", "value2"],
                         ["key3", "newvalue3"],
                         ["key4", "value4"]];
@@ -48,6 +49,8 @@ exports["test basics"] = function(assert, done) {
                          ["key4", "encrypted:value4"]];
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
     assert.deepEqual(v2.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
+    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
 
 
     var delta1to2 = v2.createDeltaFrom(v1);
@@ -69,6 +72,7 @@ exports["test basics"] = function(assert, done) {
     var v2a = nv2a.close();
     L.log("v2a", v2a);
 
+    assert.equal(v2a.getSeqnum(), 2);
     assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
     assert.deepEqual(v2a.iterKEVs().sort(), expectedEV2.sort());
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
@@ -83,6 +87,7 @@ exports["test basics"] = function(assert, done) {
     }
     var v2b = nv2b.close();
 
+    assert.equal(v2b.getSeqnum(), 2);
     assert.deepEqual(v2b.iterKVs().sort(), expectedV2.sort());
     assert.deepEqual(v2b.iterKEVs().sort(), expectedEV2.sort());
     assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
