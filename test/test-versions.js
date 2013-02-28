@@ -97,6 +97,20 @@ exports["test basics"] = function(assert, done) {
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
     assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
 
+    // bad signature
+    assert.throws(function() {
+        var good_v1vh = v1.getSignedVerhash();
+        var bad_v1vh = "bad"+good_v1vh;
+        vs.createNewVersion(bad_v1vh); // should throw
+    }, "corrupt version");
+
+    // bad version contents
+    assert.throws(function() {
+        var nv1 = vs.createNewVersion(v1.getSignedVerhash());
+        nv1.setKV("key5", "value5");
+        nv1.close(); // should throw
+    }, "corrupt new version");
+
     /*
     assert.ok(1);
     assert.equal(1, 1);
