@@ -1,5 +1,5 @@
 const VersionStore = require("versions").VersionStore;
-var L = require("logger");
+const L = require("logger");
 
 exports["test basics"] = function(assert, done) {
     var vs = new VersionStore("key", "db");
