@@ -1,5 +1,9 @@
+
+const client = require("versions");
 const VersionStore = require("versions").VersionStore;
+const server = require("server-versions");
 const L = require("logger");
+const pcrypto = require("picl-crypto");
 
 exports["test basics"] = function(assert, done) {
     var vs = new VersionStore("key", "db");
@@ -111,13 +115,25 @@ exports["test basics"] = function(assert, done) {
         nv1.close(); // should throw
     }, "corrupt new version");
 
-    /*
-    assert.ok(1);
-    assert.equal(1, 1);
-    if (0) assert.fail();
-    L.log("VERSION test");*/
     done();
 };
+
+exports["test server versions"] = function(assert, done) {
+    var vs = new server.VersionStore("server db");
+    var cv = new server.CurrentVersion(vs);
+
+    var v1_verhash = pcrypto.computeVerhash({"key1": "encval1"});
+    var v1_sighash = pcrypto.signVerhash("key", 1, v1_verhash);
+    var nv1 = vs.createNewVersion(v1_sighash);
+    nv1.setKEV("key1", "encval1");
+    var v1 = nv1.close();
+    cv.setVersion(null, v1.getVerhash());
+
+
+    assert.ok("Yay");
+    done();
+};
+
 
 
 require("sdk/test").run(exports);
