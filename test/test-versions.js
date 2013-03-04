@@ -127,10 +127,26 @@ exports["test server versions"] = function(assert, done) {
     var nv1 = vs.createNewVersion(v1_sighash);
     nv1.setKEV("key1", "encval1");
     var v1 = nv1.close();
-    cv.setVersion(null, v1.getVerhash());
+    assert.equal(v1_verhash, v1.getVerhash());
+    var out = cv.replaceVersion(v1);
+    assert.equal(out.getVerhash(), v1_verhash);
 
+    var v2_verhash = pcrypto.computeVerhash({"key1": "encval1",
+                                             "key2": "encval2"});
+    var v2_sighash = pcrypto.signVerhash("key", 1, v2_verhash);
+    var nv2 = vs.createNewVersion(v2_sighash);
+    nv2.setKEV("key1", "encval1");
+    nv2.setKEV("key2", "encval2");
+    var v2 = nv2.close();
+    assert.equal(v2_verhash, v2.getVerhash());
 
-    assert.ok("Yay");
+    out = cv.updateVersion(v1_verhash, v2);
+    assert.equal(out.getVerhash(), v2_verhash);
+
+    // out-of-date, returns old value
+    out = cv.updateVersion(v1_verhash, v2);
+    assert.equal(out.getVerhash(), v2_verhash);
+
     done();
 };
 
