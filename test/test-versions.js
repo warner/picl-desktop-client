@@ -60,18 +60,18 @@ exports["test basics"] = function(assert, done) {
     var delta1to2 = v2.createDeltaFrom(v1);
     L.log(delta1to2);
     assert.deepEqual(delta1to2.sort(),
-                     [["del", "key1"],
-                      ["set", "key3", "encrypted:newvalue3"],
-                      ["set", "key4", "encrypted:value4"]].sort());
+                     [["key1", "del"],
+                      ["key3", "set", "encrypted:newvalue3"],
+                      ["key4", "set", "encrypted:value4"]].sort());
 
     // inbound with a delta
     var nv2a = v1.createNewVersion(v2.getSignedVerhash());
     L.log("nv2a", nv2a);
     for (let delta of delta1to2) {
-        if (delta[0] == "del")
-            nv2a.deleteKey(delta[1]);
-        else if (delta[0] == "set")
-            nv2a.setKEV(delta[1], delta[2]);
+        if (delta[1] == "del")
+            nv2a.deleteKey(delta[0]);
+        else if (delta[1] == "set")
+            nv2a.setKEV(delta[0], delta[2]);
     }
     var v2a = nv2a.close();
     L.log("v2a", v2a);
