@@ -21,29 +21,44 @@ exports["test basics"] = function(assert, done) {
     nv1.setKV("key2", "value2");
     nv1.setKV("key3", "value3");
     var v1 = nv1.close();
+    var v2, v2b;
     L.log("less early");
     resolve(null)
         .then(function() {
             L.log("starting");
             return client.push(v1, null, transport);
         })
-        .then(function() {
+        .then(function(ret) {
             L.log("push null->v1 done");
+            L.log(ret);
+            assert.equal(ret.type, "success");
+            assert.equal(ret.serverVersion, v1.getSignedVerhash());
             var nv2 = v1.createNextVersion();
             nv2.setKV("key1", "value1a");
             nv2.deleteKey("key2");
             nv2.setKV("key4", "value4");
-            var v2 = nv2.close();
+            v2 = nv2.close();
             return client.push(v2, v1, transport);
         })
-        .then(function() {
+        .then(function(ret) {
             L.log("push v1->v2 done");
-            assert.ok("yay success");
-        }, function(err) {
-            L.log("err", err);
-            throw err;
+            assert.equal(ret.type, "success");
+            assert.equal(ret.serverVersion, v2.getSignedVerhash());
+            // now trying to push v1->v2b should fail: this represents the
+            // loser of a race condition
+            var nv2b = v1.createNextVersion();
+            nv2b.setKV("key1", "value1b");
+            var v2b = nv2b.close();
+            return client.push(v2b, v1, transport);
         })
-        .then(function(){}, function(err) {assert.fail(err);})
+        .then(function(ret) {
+            L.log("push v1->v2b done (should fail)");
+            L.log(ret);
+            assert.equal(ret.type, "out-of-date");
+            assert.equal(ret.serverVersion, v2.getSignedVerhash());
+        })
+        .then(function(){assert.ok("yay success");}, 
+              function(err) {L.log("err", err); assert.fail(err);})
         .then(done);
     L.log("late");
 };
