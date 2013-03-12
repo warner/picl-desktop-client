@@ -13,6 +13,7 @@ function createVersionWith(clientVersionStore, serverVersionStore, seqnum, keys)
     var clientVersion, serverVersion, nv;
 
     nv = new clientVersions._for_tests.NewVersion({store: clientVersionStore,
+                                                   key: "AES key",
                                                    seqnum: seqnum,
                                                    expectedVerhash: null});
     Object.keys(keys).forEach(function(key) {
