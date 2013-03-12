@@ -17,7 +17,7 @@ function createVersionWith(clientVersionStore, serverVersionStore, seqnum, keys)
                                                    seqnum: seqnum,
                                                    expectedVerhash: null});
     Object.keys(keys).forEach(function(key) {
-        nv.setKV(keys[key]);
+        nv.setKV(key, keys[key]);
     });
     clientVersion = nv.close();
     if (clientVersionStore)
