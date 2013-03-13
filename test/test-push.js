@@ -135,6 +135,7 @@ exports["test pull"] = function(assert, done) {
                          vers1.server.getSignedVerhash());
             assert.deepEqual(v1.iterKEVs(), vers1.server.iterKEVs());
             assert.deepEqual(v1.iterKVs(), vers1.client.iterKVs());
+            s._cv.updateVersion(v1.getVerhash(), vers2.server);
             return client.pull(vers2.server.getSignedVerhash(), v1,
                                c_vs, transport);
         })
@@ -143,9 +144,9 @@ exports["test pull"] = function(assert, done) {
             assert.equal(ret.type, "success");
             var v2 = ret.newVersion;
             assert.equal(v2.getSignedVerhash(),
-                         vers1.server.getSignedVerhash());
-            assert.deepEqual(v2.iterKEVs(), vers1.server.iterKEVs());
-            assert.deepEqual(v2.iterKVs(), vers1.client.iterKVs());
+                         vers2.server.getSignedVerhash());
+            assert.deepEqual(v2.iterKEVs(), vers2.server.iterKEVs());
+            assert.deepEqual(v2.iterKVs(), vers2.client.iterKVs());
 
             // now make sure we can fetch a full copy of v2
             return client.pull(vers2.server.getSignedVerhash(), null,
@@ -156,9 +157,9 @@ exports["test pull"] = function(assert, done) {
             assert.equal(ret.type, "success");
             var v2 = ret.newVersion;
             assert.equal(v2.getSignedVerhash(),
-                         vers1.server.getSignedVerhash());
-            assert.deepEqual(v2.iterKEVs(), vers1.server.iterKEVs());
-            assert.deepEqual(v2.iterKVs(), vers1.client.iterKVs());
+                         vers2.server.getSignedVerhash());
+            assert.deepEqual(v2.iterKEVs(), vers2.server.iterKEVs());
+            assert.deepEqual(v2.iterKVs(), vers2.client.iterKVs());
 
             // asking for a delta they don't have should.. do something
             // TODO
