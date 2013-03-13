@@ -38,7 +38,6 @@ function createVersionWith(clientVersionStore, serverVersionStore, seqnum, keys)
 }
 
 exports["test push"] = function(assert, done) {
-    assert.ok("skip"); return done();
     // server
     var s = new server.Server();
     var transport = new LoopbackTransport(s);
@@ -97,7 +96,6 @@ exports["test push"] = function(assert, done) {
 };
 
 exports["test pull"] = function(assert, done) {
-    //assert.ok("skip"); return done();
     var s = new server.Server();
     var s_vs = new serverVersions.VersionStore("db");
     var c_vs = new VersionStore("key", "db");
