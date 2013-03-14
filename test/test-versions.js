@@ -64,6 +64,16 @@ exports["test basics"] = function(assert, done) {
                       ["key3", "set", "encrypted:newvalue3"],
                       ["key4", "set", "encrypted:value4"]].sort());
 
+    var nv3 = v2.createNextVersion();
+    nv3.setAllKVs({key2: "value2", key3: "newervalue3"});
+    var v3 = nv3.close();
+    const expectedV3 = [["key2", "value2"],
+                        ["key3", "newervalue3"]];
+    assert.deepEqual(v3.iterKVs().sort(), expectedV3.sort());
+    const expectedEV3 = [["key2", "encrypted:value2"],
+                         ["key3", "encrypted:newervalue3"]];
+    assert.deepEqual(v3.iterKEVs().sort(), expectedEV3.sort());
+
     // inbound with a delta
     var nv2a = v1.createNewVersion(v2.getSignedVerhash());
     L.log("nv2a", nv2a);
