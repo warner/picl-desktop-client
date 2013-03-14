@@ -31,7 +31,9 @@ exports["test basics"] = function(assert, done) {
     assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
     assert.deepEqual(vs.getVersion(v1.getVerhash()).iterKVs().sort(),
                      expectedV1.sort());
-
+    assert.deepEqual(v1.getAllKVs(), {key1: "value1",
+                                      key2: "value2",
+                                      key3: "value3"});
 
     // outbound
     var nv2 = v1.createNextVersion();
