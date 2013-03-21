@@ -1,7 +1,7 @@
 
 const client = require("client");
-const clientVersions = require("versions");
-const VersionStore = require("versions").VersionStore;
+const clientVersions = require("client-versions");
+const VersionStore = require("client-versions").VersionStore;
 const server = require("server");
 const serverVersions = require("server-versions");
 const L = require("logger");

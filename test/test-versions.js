@@ -1,6 +1,6 @@
 
-const client = require("versions");
-const VersionStore = require("versions").VersionStore;
+const client = require("client-versions");
+const VersionStore = require("client-versions").VersionStore;
 const server = require("server-versions");
 const L = require("logger");
 const pcrypto = require("picl-crypto");
