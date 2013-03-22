@@ -6,7 +6,8 @@ const L = require("logger");
 const pcrypto = require("picl-crypto");
 
 exports["test basics"] = function(assert, done) {
-    var vs = new VersionStore("key", "db");
+    var enckey = pcrypto.hashKey("enckey");
+    var vs = new VersionStore(enckey, "db");
     var nv1 = vs.createFirstVersion();
     assert.ok(nv1);
     nv1.setKV("key1", "value1");
@@ -24,11 +25,13 @@ exports["test basics"] = function(assert, done) {
     const expectedV1 = [["key1", "value1"],
                         ["key2", "value2"],
                         ["key3", "value3"]];
-    const expectedEV1 = [["key1", "encrypted:value1"],
-                         ["key2", "encrypted:value2"],
-                         ["key3", "encrypted:value3"]];
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    var decryptKEV = client._for_tests.decryptKEV;
+    assert.deepEqual(expectedV1,
+                     v1.iterKEVs().map(function(a) {
+                         return [a[0], decryptKEV(enckey, a[1])];
+                         }).sort());
+    var expectedKEV1 = v1.iterKEVs();
     assert.deepEqual(vs.getVersion(v1.getVerhash()).iterKVs().sort(),
                      expectedV1.sort());
     assert.deepEqual(v1.getAllKVs(), {key1: "value1",
@@ -50,21 +53,26 @@ exports["test basics"] = function(assert, done) {
     const expectedV2 = [["key2", "value2"],
                         ["key3", "newvalue3"],
                         ["key4", "value4"]];
-    const expectedEV2 = [["key2", "encrypted:value2"],
-                         ["key3", "encrypted:newvalue3"],
-                         ["key4", "encrypted:value4"]];
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(expectedV2,
+                     v2.iterKEVs().map(function(a) {
+                         return [a[0], decryptKEV(enckey, a[1])];
+                         }).sort());
+    var expectedKEV2 = v2.iterKEVs();
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    assert.deepEqual(expectedKEV1.sort(), v1.iterKEVs().sort());
 
 
     var delta1to2 = v2.createDeltaFrom(v1);
     L.log(delta1to2);
-    assert.deepEqual(delta1to2.sort(),
-                     [["key1", "del"],
-                      ["key3", "set", "encrypted:newvalue3"],
-                      ["key4", "set", "encrypted:value4"]].sort());
+    var expectedDelta1to2 = [["key1", "del"],
+                             ["key3", "set", "newvalue3"],
+                             ["key4", "set", "value4"]];
+    assert.deepEqual(delta1to2.sort().map(function(a) {
+        if (a[1] == "set")
+            return [a[0], a[1], decryptKEV(enckey, a[2])];
+        return a;
+    }), expectedDelta1to2.sort());
 
     var nv3 = v2.createNextVersion();
     nv3.setAllKVs({key2: "value2", key3: "newervalue3"});
@@ -72,9 +80,10 @@ exports["test basics"] = function(assert, done) {
     const expectedV3 = [["key2", "value2"],
                         ["key3", "newervalue3"]];
     assert.deepEqual(v3.iterKVs().sort(), expectedV3.sort());
-    const expectedEV3 = [["key2", "encrypted:value2"],
-                         ["key3", "encrypted:newervalue3"]];
-    assert.deepEqual(v3.iterKEVs().sort(), expectedEV3.sort());
+    assert.deepEqual(expectedV3,
+                     v3.iterKEVs().map(function(a) {
+                         return [a[0], decryptKEV(enckey, a[1])];
+                         }).sort());
 
     // inbound with a delta
     var nv2a = v1.createNewVersion(v2.getSignedVerhash());
@@ -90,11 +99,11 @@ exports["test basics"] = function(assert, done) {
 
     assert.equal(v2a.getSeqnum(), 2);
     assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2a.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2a.iterKEVs().sort(), expectedKEV2.sort());
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2.iterKEVs().sort(), expectedKEV2.sort());
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    assert.deepEqual(v1.iterKEVs().sort(), expectedKEV1.sort());
 
     // inbound without any delta
     var nv2b = vs.createNewVersion(v2.getSignedVerhash());
@@ -105,13 +114,13 @@ exports["test basics"] = function(assert, done) {
 
     assert.equal(v2b.getSeqnum(), 2);
     assert.deepEqual(v2b.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2b.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2b.iterKEVs().sort(), expectedKEV2.sort());
     assert.deepEqual(v2a.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2a.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2a.iterKEVs().sort(), expectedKEV2.sort());
     assert.deepEqual(v2.iterKVs().sort(), expectedV2.sort());
-    assert.deepEqual(v2.iterKEVs().sort(), expectedEV2.sort());
+    assert.deepEqual(v2.iterKEVs().sort(), expectedKEV2.sort());
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    assert.deepEqual(v1.iterKEVs().sort(), expectedEV1.sort());
+    assert.deepEqual(v1.iterKEVs().sort(), expectedKEV1.sort());
 
     // bad signature
     assert.throws(function() {
@@ -135,7 +144,7 @@ exports["test server versions"] = function(assert, done) {
     var cv = new server.CurrentVersion(vs);
 
     var v1_verhash = pcrypto.computeVerhash({"key1": "encval1"});
-    var v1_sighash = pcrypto.signVerhash("key", 1, v1_verhash);
+    var v1_sighash = pcrypto.signVerhash("signkey", 1, v1_verhash);
     var nv1 = vs.createNewVersion(v1_sighash);
     nv1.setKEV("key1", "encval1");
     var v1 = nv1.close();
@@ -145,7 +154,7 @@ exports["test server versions"] = function(assert, done) {
 
     var v2_verhash = pcrypto.computeVerhash({"key1": "encval1",
                                              "key2": "encval2"});
-    var v2_sighash = pcrypto.signVerhash("key", 1, v2_verhash);
+    var v2_sighash = pcrypto.signVerhash("signkey", 1, v2_verhash);
     var nv2 = vs.createNewVersion(v2_sighash);
     nv2.setKEV("key1", "encval1");
     nv2.setKEV("key2", "encval2");
