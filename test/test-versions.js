@@ -7,7 +7,8 @@ const pcrypto = require("picl-crypto");
 
 exports["test basics"] = function(assert, done) {
     var enckey = pcrypto.hashKey("enckey");
-    var vs = new VersionStore(enckey, "db");
+    var signkey = pcrypto.hashKey("signkey");
+    var vs = new VersionStore(enckey, signkey, "db");
     var nv1 = vs.createFirstVersion();
     assert.ok(nv1);
     nv1.setKV("key1", "value1");
@@ -19,6 +20,10 @@ exports["test basics"] = function(assert, done) {
     L.log("verhash", v1.getVerhash());
     assert.equal(v1.getSeqnum(), 1);
     assert.strictEqual(v1, vs.getVersion(v1.getVerhash()));
+    var sigv = v1.getSignedVerhash();
+    pcrypto.verifyVerhash(signkey, sigv);
+    assert.equal(pcrypto.extractVerhash(sigv).seqnum, 1);
+    assert.equal(pcrypto.extractVerhash(sigv).verhash, v1.getVerhash());
     L.log("signed", v1.getSignedVerhash());
     L.log("v1 again", v1);
 
@@ -143,8 +148,9 @@ exports["test server versions"] = function(assert, done) {
     var vs = new server.VersionStore("server db");
     var cv = new server.CurrentVersion(vs);
 
+    var signkey = pcrypto.hashKey("signkey");
     var v1_verhash = pcrypto.computeVerhash({"key1": "encval1"});
-    var v1_sighash = pcrypto.signVerhash("signkey", 1, v1_verhash);
+    var v1_sighash = pcrypto.signVerhash(signkey, 1, v1_verhash);
     var nv1 = vs.createNewVersion(v1_sighash);
     nv1.setKEV("key1", "encval1");
     var v1 = nv1.close();
@@ -154,7 +160,7 @@ exports["test server versions"] = function(assert, done) {
 
     var v2_verhash = pcrypto.computeVerhash({"key1": "encval1",
                                              "key2": "encval2"});
-    var v2_sighash = pcrypto.signVerhash("signkey", 1, v2_verhash);
+    var v2_sighash = pcrypto.signVerhash(signkey, 1, v2_verhash);
     var nv2 = vs.createNewVersion(v2_sighash);
     nv2.setKEV("key1", "encval1");
     nv2.setKEV("key2", "encval2");

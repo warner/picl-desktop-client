@@ -9,11 +9,15 @@ const pcrypto = require("picl-crypto");
 const LoopbackTransport = require("transport-loopback").LoopbackTransport;
 const resolve = require("sdk/core/promise").resolve;
 
+var signkey = pcrypto.hashKey("sign");
+var enckey = pcrypto.hashKey("enc");
+
 function createVersionWith(clientVersionStore, serverVersionStore, seqnum, keys) {
     var clientVersion, serverVersion, nv;
 
     nv = new clientVersions._for_tests.NewVersion({store: clientVersionStore,
-                                                   key: pcrypto.hashKey("key"),
+                                                   signkey: signkey,
+                                                   enckey: enckey,
                                                    seqnum: seqnum,
                                                    expectedVerhash: null});
     Object.keys(keys).forEach(function(key) {
@@ -45,7 +49,7 @@ exports["test push"] = function(assert, done) {
 
     L.log("early");
     // client
-    var c_vs = new VersionStore(pcrypto.hashKey("key"), "db");
+    var c_vs = new VersionStore(enckey, signkey, "db");
 
     var vers1 = createVersionWith(s_vs, c_vs, 1,
                                   { key1: "value1",
@@ -98,8 +102,8 @@ exports["test push"] = function(assert, done) {
 exports["test pull"] = function(assert, done) {
     var s = new server.Server();
     var s_vs = new serverVersions.VersionStore("db");
-    var c_vs = new VersionStore(pcrypto.hashKey("key"), "db");
-    var c_vs_dummy = new VersionStore(pcrypto.hashKey("key"), "db");
+    var c_vs = new VersionStore(enckey, signkey, "db");
+    var c_vs_dummy = new VersionStore(enckey, signkey, "db");
     var transport = new LoopbackTransport(s);
 
     L.log("early");
