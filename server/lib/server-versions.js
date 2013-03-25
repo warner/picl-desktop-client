@@ -1,6 +1,7 @@
 
 const pcrypto = require("./picl-crypto");
-const L = require("logger");
+const L = require("./logger");
+const Set = require("set-component");
 
 /**
  * "Version"(on the server) is an immutable snapshot of key-encrypted-value
@@ -49,18 +50,20 @@ Version.prototype.createDeltaFrom = function(oldVersion) {
     //console.log("IND", JSON.stringify(oldKEVs), JSON.stringify(newKEVs));
     var deltas = [];
     var allKeys = new Set();
-    for (let key of Object.keys(oldKEVs))
+    Object.keys(oldKEVs).forEach(function(key) {
         allKeys.add(key);
-    for (let key of Object.keys(newKEVs))
+    });
+    Object.keys(newKEVs).forEach(function(key) {
         allKeys.add(key);
-    for (let key of [i for (i of allKeys)].sort()) {
+    });
+    allKeys.values().sort().forEach(function(key) {
         if (!newKEVs[key])
             deltas.push([key, "del"]);
         else if (!oldKEVs[key])
             deltas.push([key, "set", newKEVs[key]]);
         else if (oldKEVs[key] != newKEVs[key])
             deltas.push([key, "set", newKEVs[key]]);
-    }
+    });
     return deltas;
 };
 

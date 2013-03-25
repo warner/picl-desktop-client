@@ -2,7 +2,7 @@
 const pcrypto = require("./picl-crypto");
 const sversions = require("./server-versions");
 const L = require("./logger");
-const resolve = require("sdk/core/promise").resolve;
+const Q = require("q");
 
 
 function Server() {
@@ -26,7 +26,7 @@ Server.prototype.messageReceived = function(msg) {
             L.log("OUTOFDATE", curSignedVerhash);
             resp = { type: "out-of-date",
                      serverVersion: curSignedVerhash };
-            return resolve(resp);
+            return Q(resp);
         }
         if (msg.first === "START") {
             // create/replace an accumulator for incoming deltas
@@ -35,7 +35,7 @@ Server.prototype.messageReceived = function(msg) {
         var r = this._incomingVersions[msg.to];
         if (!r) {
             resp = { type: "missing-keys" };
-            return resolve(resp);
+            return Q(resp);
         }
         r.deltas = r.deltas.concat(msg.batch);
         if (msg.upto === "END") {
@@ -43,10 +43,10 @@ Server.prototype.messageReceived = function(msg) {
             delete this._incomingVersions[msg.to];
             this.applyDelta(msg.from, msg.to, inboundDeltas);
             resp = { type: "ok" };
-            return resolve(resp);
+            return Q(resp);
         }
         resp = { type: "ok" };
-        return resolve(resp);
+        return Q(resp);
     }
     if (msg.type === "pull") {
         // {from, to, first}
@@ -55,7 +55,7 @@ Server.prototype.messageReceived = function(msg) {
             // they're asking for something that's out-of-date
             resp = { type: "unknown-delta",
                      serverVersion: cur.getSignedVerhash() };
-            return resolve(resp);
+            return Q(resp);
         }
 
         var old;
@@ -67,7 +67,7 @@ Server.prototype.messageReceived = function(msg) {
             if (!old) {
                 resp = { type: "unknown-delta",
                          serverVersion: cur.getSignedVerhash() };
-                return resolve(resp);
+                return Q(resp);
             }
         }
         // NB: we're also allowed to return {type:"missing-keys"} if they ask
@@ -91,10 +91,10 @@ Server.prototype.messageReceived = function(msg) {
             resp.next = "DONE";
         else
             resp.next = outboundDeltas[i][0];
-        return resolve(resp);
+        return Q(resp);
     }
     L.log("unknown command "+msg.type);
-    return reject("unknown command "+msg.type);
+    return Q.reject("unknown command "+msg.type);
 };
 
 Server.prototype.applyDelta = function(from, to, deltas) {
