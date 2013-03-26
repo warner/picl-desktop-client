@@ -14,8 +14,9 @@ app.use(function(req, res, next) {
     });
 
 app.post("/api", function(req, res) {
+    console.log("RX", req.body);
     s.messageReceived(req.body)
-        .then(function (r) {res.send(r);},
+        .then(function (r) {console.log("TX", r); res.send(r);},
               function (err) {res.send(500, err);});
 });
 
