@@ -3,6 +3,8 @@ const pcrypto = require("./picl-crypto");
 const sversions = require("./server-versions");
 const L = require("./logger");
 const Q = require("q");
+const resolve = Q;
+const reject = Q.reject;
 
 
 function Server() {
@@ -19,6 +21,16 @@ Server.prototype.messageReceived = function(msg) {
     // msg is a de-JSONed object
     var resp;
     var cur = this._cv.getCurrentVersion();
+
+    if (msg.type === "current") {
+        var curVerhash = (cur && cur.getVerhash()) || null;
+        var curSignedVerhash = (cur && cur.getSignedVerhash()) || null;
+        resp = { type: "ok",
+                 verhash: curVerhash,
+                 signedVerhash: curSignedVerhash };
+        return resolve(resp);
+    }
+
     if (msg.type === "push") {
         var curVerhash = (cur && cur.getVerhash()) || null;
         var curSignedVerhash = (cur && cur.getSignedVerhash()) || null;
@@ -26,7 +38,7 @@ Server.prototype.messageReceived = function(msg) {
             L.log("OUTOFDATE", curSignedVerhash);
             resp = { type: "out-of-date",
                      serverVersion: curSignedVerhash };
-            return Q(resp);
+            return resolve(resp);
         }
         if (msg.first === "START") {
             // create/replace an accumulator for incoming deltas
@@ -35,7 +47,7 @@ Server.prototype.messageReceived = function(msg) {
         var r = this._incomingVersions[msg.to];
         if (!r) {
             resp = { type: "missing-keys" };
-            return Q(resp);
+            return resolve(resp);
         }
         r.deltas = r.deltas.concat(msg.batch);
         if (msg.upto === "END") {
@@ -43,11 +55,12 @@ Server.prototype.messageReceived = function(msg) {
             delete this._incomingVersions[msg.to];
             this.applyDelta(msg.from, msg.to, inboundDeltas);
             resp = { type: "ok" };
-            return Q(resp);
+            return resolve(resp);
         }
         resp = { type: "ok" };
-        return Q(resp);
+        return resolve(resp);
     }
+
     if (msg.type === "pull") {
         // {from, to, first}
 
@@ -55,7 +68,7 @@ Server.prototype.messageReceived = function(msg) {
             // they're asking for something that's out-of-date
             resp = { type: "unknown-delta",
                      serverVersion: cur.getSignedVerhash() };
-            return Q(resp);
+            return resolve(resp);
         }
 
         var old;
@@ -67,7 +80,7 @@ Server.prototype.messageReceived = function(msg) {
             if (!old) {
                 resp = { type: "unknown-delta",
                          serverVersion: cur.getSignedVerhash() };
-                return Q(resp);
+                return resolve(resp);
             }
         }
         // NB: we're also allowed to return {type:"missing-keys"} if they ask
@@ -91,10 +104,10 @@ Server.prototype.messageReceived = function(msg) {
             resp.next = "DONE";
         else
             resp.next = outboundDeltas[i][0];
-        return Q(resp);
+        return resolve(resp);
     }
     L.log("unknown command "+msg.type);
-    return Q.reject("unknown command "+msg.type);
+    return reject("unknown command "+msg.type);
 };
 
 Server.prototype.applyDelta = function(from, to, deltas) {
