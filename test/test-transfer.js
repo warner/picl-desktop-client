@@ -27,15 +27,15 @@ function createVersionWith(clientVersionStore, serverVersionStore, seqnum, keys)
     if (clientVersionStore)
         clientVersionStore._addVersion(clientVersion);
 
-    nv = new serverVersions._for_tests.NewVersion(
-        {store: serverVersionStore,
-         seqnum: seqnum,
-         signedVerhash: clientVersion.getSignedVerhash()});
-    clientVersion.iterKEVs().forEach(function(key_and_EV) {
-        nv.setKEV(key_and_EV[0], key_and_EV[1]);
-    });
-    serverVersion = nv.close();
     if (serverVersionStore) {
+        const SNV = serverVersions._for_tests.NewVersion;
+        nv = new SNV({store: serverVersionStore,
+                      seqnum: seqnum,
+                      signedVerhash: clientVersion.getSignedVerhash()});
+        clientVersion.iterKEVs().forEach(function(key_and_EV) {
+            nv.setKEV(key_and_EV[0], key_and_EV[1]);
+        });
+        serverVersion = nv.close();
         serverVersionStore._addVersion(serverVersion);
     }
     return {client: clientVersion, server: serverVersion};
@@ -163,8 +163,30 @@ exports["test pull"] = function(assert, done) {
             assert.deepEqual(v2.iterKEVs(), vers2.server.iterKEVs());
             assert.deepEqual(v2.iterKVs(), vers2.client.iterKVs());
 
-            // asking for a delta they don't have should.. do something
-            // TODO
+            // ask for a weird delta: the puller should fall back to fetching
+            // a full version
+            var v_bad = createVersionWith(c_vs, null, 1, {bad:"weird"});
+            return client.pull(vers2.server.getSignedVerhash(), v_bad.client,
+                               c_vs, transport);
+        })
+        .then(function(ret) {
+            L.log("pull missing->v2 done");
+            assert.equal(ret.type, "success");
+            var v2 = ret.newVersion;
+            assert.equal(v2.getSignedVerhash(),
+                         vers2.server.getSignedVerhash());
+            assert.deepEqual(v2.iterKEVs(), vers2.server.iterKEVs());
+            assert.deepEqual(v2.iterKVs(), vers2.client.iterKVs());
+
+            // asking for a delta they don't have should fail
+            var v_bad = createVersionWith(c_vs_dummy, s_vs, 3, {bad:"unknown"});
+            return client.pull(v_bad.server.getSignedVerhash(), vers1.client,
+                               c_vs, transport);
+        })
+        .then(function(ret) {
+            L.log("pull v2->unknown done");
+            assert.equal(ret.type, "out-of-date");
+            assert.equal(ret.serverVersion, vers2.server.getSignedVerhash());
         })
         .then(function(){assert.ok("yay success");},
               function(err) {L.log("err", err); L.log(""+err); assert.fail(err);})
