@@ -1,5 +1,5 @@
 
-const client = require("client");
+const client = require("transfer-client");
 const clientVersions = require("client-versions");
 const VersionStore = require("client-versions").VersionStore;
 const server = require("server");
