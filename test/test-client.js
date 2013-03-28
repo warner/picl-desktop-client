@@ -45,6 +45,11 @@ exports["test client"] = function(assert, done) {
                     transport: transport,
                     merge: merge};
     client.setup(client_A, enckey, signkey);
+    L.log(local.calls);
+    assert.equal(local.calls.length, 0);
+    local.onChangeCB({key: "value"});
+    L.log(local.calls);
+    L.log(broadcast.calls);
 
     assert.ok("ok");
     done();
