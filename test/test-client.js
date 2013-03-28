@@ -26,6 +26,10 @@ function makeBroadcast() {
     };
 }
 
+function clear(arr) {
+    arr.splice(0, arr.length);
+}
+
 exports["test client"] = function(assert, done) {
     // server
     var s = new server.Server();
@@ -53,16 +57,34 @@ exports["test client"] = function(assert, done) {
     assert.equal(local_A.calls.length, 0);
     assert.equal(broadcast_A.calls.length, 0);
 
-    local_A.onChangeCB({key: "value"});
+    // set the initial data
+    const KV1 = {key: "value"};
+    local_A.onChangeCB(KV1);
     assert.equal(local_A.calls.length, 0);
     assert.equal(broadcast_A.calls.length, 1);
     var v1 = broadcast_A.calls[0];
+    clear(broadcast_A.calls);
+    assert.equal(v1, client_A.myVersion_A.getSignedVerhash());
+    assert.equal(pcrypto.extractVerhash(v1).seqnum, 1);
 
-    local_A.onChangeCB({key: "value2"});
+    // deliver that first broadcast. Nothing should change.
+    broadcast_A.onChangeCB(v1);
     assert.equal(local_A.calls.length, 0);
-    assert.equal(broadcast_A.calls.length, 2);
-    var v2 = broadcast_A.calls[1];
+    assert.equal(broadcast_A.calls.length, 0);
 
+    const KV2 = {key: "value2"};
+    local_A.onChangeCB(KV2);
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 1);
+    var v2 = broadcast_A.calls[0];
+    clear(broadcast_A.calls);
+    assert.equal(v2, client_A.myVersion_A.getSignedVerhash());
+    assert.equal(pcrypto.extractVerhash(v2).seqnum, 2);
+
+    // deliver the second broadcast. Nothing should change.
+    broadcast_A.onChangeCB(v2);
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 0);
 
     L.log("----- starting B ---");
     var broadcast_B = makeBroadcast();
@@ -76,18 +98,73 @@ exports["test client"] = function(assert, done) {
     assert.equal(local_B.calls.length, 0);
     assert.equal(broadcast_B.calls.length, 0);
 
+    // TODO: a form in which B hears about the server version before it hears
+    // about its ill-fated attempt to set the initial version. This form
+    // makes (and fails) the initial set before it hears the broadcast of A.
+
     // B encounters an existing server value, and our merge function clobbers
     // the old data
-    local_B.onChangeCB({key: "valueB"});
-    L.log(local_B.calls);
-    L.log(broadcast_B.calls);
+    const KVB = {key: "valueB"};
+    local_B.onChangeCB(KVB);
     assert.equal(broadcast_B.calls.length, 0);
     assert.equal(local_B.calls.length, 1);
-    assert.deepEqual(local_B.calls[0][0], {key: "value2"});
+    assert.deepEqual(local_B.calls[0][0], KV2);
+    var cb = local_B.calls[0][1];
+    clear(local_B.calls);
     assert.equal(merges.length, 1);
     assert.equal(merges[0].theirs.getSignedVerhash(), v2);
+    clear(merges);
 
-    assert.ok("ok");
+    // ack the local change, which updates B to match the "merged" (i.e.
+    // clobbered) version.
+    cb(null, "dummy");
+    assert.equal(broadcast_B.calls.length, 0);
+    assert.equal(local_B.calls.length, 0);
+
+    // Now reflect back the local change. Because this matches the current
+    // server version, this should not propagate any further.
+    L.log("B accepts clobber");
+    local_B.onChangeCB(KV2);
+    assert.equal(local_B.calls.length, 0);
+    assert.equal(broadcast_B.calls.length, 0);
+
+    // now B hears about the broadcast of A's v2. Nothing should change.
+    broadcast_B.onChangeCB(v2);
+    assert.equal(local_B.calls.length, 0);
+    assert.equal(broadcast_B.calls.length, 0);
+
+    // both A and B are at KV2. Move A to KV3 and make sure B catches up
+    const KV3 = {key: "value3", key2: "value4"};
+    local_A.onChangeCB(KV3);
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 1);
+    var v3 = broadcast_A.calls[0];
+    clear(broadcast_A.calls);
+    assert.equal(pcrypto.extractVerhash(v3).seqnum, 3);
+    // A hears back its own broadcast, nothing changes
+    broadcast_A.onChangeCB(v3);
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 0);
+    // B hears about the broadcast
+    broadcast_B.onChangeCB(v3);
+    L.log("A", local_A.calls);
+    L.log(broadcast_A.calls);
+    L.log("B", local_B.calls);
+    L.log(broadcast_B.calls);
+    assert.equal(local_B.calls.length, 1);
+    assert.equal(broadcast_B.calls.length, 0);
+    assert.deepEqual(local_B.calls[0][0], KV3);
+    cb = local_B.calls[0][1];
+    clear(local_B.calls);
+    // ack B's set
+    cb(null, "dummy");
+    assert.equal(local_B.calls.length, 0);
+    assert.equal(broadcast_B.calls.length, 0);
+    // reflect B's set
+    local_B.onChangeCB(KV3);
+    assert.equal(local_B.calls.length, 0);
+    assert.equal(broadcast_B.calls.length, 0);
+
     done();
 };
 
