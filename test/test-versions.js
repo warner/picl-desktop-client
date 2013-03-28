@@ -1,5 +1,6 @@
 
 const client = require("client-versions");
+const decryptKEV = client._for_tests.decryptKEV;
 const VersionStore = require("client-versions").VersionStore;
 const server = require("server-versions");
 const L = require("logger");
@@ -17,6 +18,9 @@ exports["test basics"] = function(assert, done) {
     var v1 = nv1.close();
     assert.ok(v1);
     L.log("v1", v1);
+    assert.equal(v1.getV("key1"), "value1");
+    assert.equal(v1.getV("key2"), "value2");
+    assert.equal(decryptKEV(enckey, v1.getEV("key1")), "value1");
     L.log("verhash", v1.getVerhash());
     assert.equal(v1.getSeqnum(), 1);
     assert.strictEqual(v1, vs.getVersion(v1.getVerhash()));
@@ -31,7 +35,6 @@ exports["test basics"] = function(assert, done) {
                         ["key2", "value2"],
                         ["key3", "value3"]];
     assert.deepEqual(v1.iterKVs().sort(), expectedV1.sort());
-    var decryptKEV = client._for_tests.decryptKEV;
     assert.deepEqual(expectedV1,
                      v1.iterKEVs().map(function(a) {
                          return [a[0], decryptKEV(enckey, a[1])];
@@ -85,6 +88,8 @@ exports["test basics"] = function(assert, done) {
     const expectedV3 = [["key2", "value2"],
                         ["key3", "newervalue3"]];
     assert.deepEqual(v3.iterKVs().sort(), expectedV3.sort());
+    // key2, which didn't change, should not be re-encrypted
+    assert.equal(v3.getEV("key2"), v2.getEV("key2"));
     assert.deepEqual(expectedV3,
                      v3.iterKEVs().map(function(a) {
                          return [a[0], decryptKEV(enckey, a[1])];
