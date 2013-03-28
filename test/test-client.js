@@ -7,13 +7,23 @@ const pcrypto = require("picl-crypto");
 const LoopbackTransport = require("transport-loopback").LoopbackTransport;
 const resolve = require("sdk/core/promise").resolve;
 
-function merge(base, mine, theirs) {
-    // gets three Version objects. Is expected to return a Promise for a new
-    // closed Version object, derived from 'theirs', with a meaningful
-    // combination of both 'mine' and 'theirs'. It's also ok to just return
-    // 'theirs'.
+function makeLocal() {
+    return {
+        calls: new Array(),
+        onChange: function(cb) {this.onChangeCB=cb;},
+        setAnyways: function(data, after) {this.calls.push([data,after]);},
+        setIfStill: function(oldVersion, newVersion, data, after) {
+            throw new Error("not implemented yet");
+        }
+    };
+}
 
-    return resolve(theirs);
+function makeBroadcast() {
+    return {
+        calls: new Array(),
+        onChange: function(cb) {this.onChangeCB=cb;},
+        set: function(data) {this.calls.push(data);}
+    };
 }
 
 exports["test client"] = function(assert, done) {
@@ -25,31 +35,57 @@ exports["test client"] = function(assert, done) {
     var enckey = pcrypto.hashKey("enc");
     var signkey = pcrypto.hashKey("sign");
 
-    var local = {
-        calls: new Array(),
-        onChange: function(cb) {this.onChangeCB=cb;},
-        setAnyways: function(data, after) {this.calls.push([data,after]);},
-        setIfStill: function(oldVersion, newVersion, data, after) {
-            throw new Error("not implemented yet");
-        }
-    };
-    var broadcast = {
-        calls: new Array(),
-        onChange: function(cb) {this.onChangeCB=cb;},
-        set: function(data) {this.calls.push(data);}
-    };
+    var merges = [];
+    function merge(base, mine, theirs) {
+        merges.push({base: base, mine: mine, theirs: theirs});
+        return resolve(theirs);
+    }
+
+    var broadcast_A = makeBroadcast();
+    var local_A = makeLocal();
 
     var client_A = {name: "A",
-                    local: local,
-                    broadcast: broadcast,
+                    local: local_A,
+                    broadcast: broadcast_A,
                     transport: transport,
                     merge: merge};
     client.setup(client_A, enckey, signkey);
-    L.log(local.calls);
-    assert.equal(local.calls.length, 0);
-    local.onChangeCB({key: "value"});
-    L.log(local.calls);
-    L.log(broadcast.calls);
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 0);
+
+    local_A.onChangeCB({key: "value"});
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 1);
+    var v1 = broadcast_A.calls[0];
+
+    local_A.onChangeCB({key: "value2"});
+    assert.equal(local_A.calls.length, 0);
+    assert.equal(broadcast_A.calls.length, 2);
+    var v2 = broadcast_A.calls[1];
+
+
+    L.log("----- starting B ---");
+    var broadcast_B = makeBroadcast();
+    var local_B = makeLocal();
+    var client_B = {name: "B",
+                    local: local_B,
+                    broadcast: broadcast_B,
+                    transport: transport,
+                    merge: merge};
+    client.setup(client_B, enckey, signkey);
+    assert.equal(local_B.calls.length, 0);
+    assert.equal(broadcast_B.calls.length, 0);
+
+    // B encounters an existing server value, and our merge function clobbers
+    // the old data
+    local_B.onChangeCB({key: "valueB"});
+    L.log(local_B.calls);
+    L.log(broadcast_B.calls);
+    assert.equal(broadcast_B.calls.length, 0);
+    assert.equal(local_B.calls.length, 1);
+    assert.deepEqual(local_B.calls[0][0], {key: "value2"});
+    assert.equal(merges.length, 1);
+    assert.equal(merges[0].theirs.getSignedVerhash(), v2);
 
     assert.ok("ok");
     done();
