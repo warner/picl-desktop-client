@@ -5,7 +5,6 @@ const serverVersions = require("server-versions");
 const L = require("logger");
 const pcrypto = require("picl-crypto");
 const LoopbackTransport = require("transport-loopback").LoopbackTransport;
-const resolve = require("sdk/core/promise").resolve;
 
 function makeLocal() {
     return {
@@ -42,7 +41,7 @@ exports["test client"] = function(assert, done) {
     var merges = [];
     function merge(base, mine, theirs) {
         merges.push({base: base, mine: mine, theirs: theirs});
-        return resolve(theirs);
+        return theirs;
     }
 
     var broadcast_A = makeBroadcast();
