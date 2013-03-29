@@ -172,11 +172,11 @@ exports["test server versions"] = function(assert, done) {
     var v2 = nv2.close();
     assert.equal(v2_verhash, v2.getVerhash());
 
-    out = cv.updateVersion(v1_verhash, v2);
+    out = cv.updateVersion(v1_sighash, v2);
     assert.equal(out.getVerhash(), v2_verhash);
 
     // out-of-date, returns old value
-    out = cv.updateVersion(v1_verhash, v2);
+    out = cv.updateVersion(v1_sighash, v2);
     assert.equal(out.getVerhash(), v2_verhash);
 
     done();

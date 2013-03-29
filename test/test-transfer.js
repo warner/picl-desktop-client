@@ -137,7 +137,7 @@ exports["test pull"] = function(assert, done) {
                          vers1.server.getSignedVerhash());
             assert.deepEqual(v1.iterKEVs(), vers1.server.iterKEVs());
             assert.deepEqual(v1.iterKVs(), vers1.client.iterKVs());
-            s._cv.updateVersion(v1.getVerhash(), vers2.server);
+            s._cv.updateVersion(v1.getSignedVerhash(), vers2.server);
             return client.pull(vers2.server.getSignedVerhash(), v1,
                                c_vs, transport);
         })
