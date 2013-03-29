@@ -92,6 +92,13 @@ exports["test push"] = function(assert, done) {
             L.log(ret);
             assert.equal(ret.type, "out-of-date");
             assert.equal(ret.serverVersion, v2.getSignedVerhash());
+            // now trying to push v2->v1 should fail: a rollback attempt
+            return client.push(v1, v2, transport);
+        })
+        .then(function(ret) {
+            L.log("push v2->v1 done (should fail)");
+            L.log(ret);
+            assert.equal(ret.type, "bad-seqnum");
         })
         .then(function(){assert.ok("yay success");},
               function(err) {L.log("err", err); assert.fail(err);})

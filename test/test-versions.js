@@ -173,11 +173,26 @@ exports["test server versions"] = function(assert, done) {
     assert.equal(v2_verhash, v2.getVerhash());
 
     out = cv.updateVersion(v1_sighash, v2);
-    assert.equal(out.getVerhash(), v2_verhash);
+    assert.equal(out, null);
+    assert.equal(cv.getCurrentVersion().getVerhash(), v2_verhash);
 
-    // out-of-date, returns old value
+    // out-of-date
     out = cv.updateVersion(v1_sighash, v2);
-    assert.equal(out.getVerhash(), v2_verhash);
+    assert.equal(out, "out of date");
+
+    // regression
+    out = cv.updateVersion(v2_sighash, v1);
+    assert.equal(out, "new seqnum is wrong cur=2 want=3 got=1");
+
+    // jumping too far into the future
+    var v4_verhash = pcrypto.computeVerhash({"key4": "encval4"});
+    var v4_sighash = pcrypto.signVerhash(signkey, 4, v4_verhash);
+    var nv4 = vs.createNewVersion(v4_sighash);
+    nv4.setKEV("key4", "encval4");
+    var v4 = nv4.close();
+    assert.equal(v4_verhash, v4.getVerhash());
+    out = cv.updateVersion(v2_sighash, v4);
+    assert.equal(out, "new seqnum is wrong cur=2 want=3 got=4");
 
     done();
 };
