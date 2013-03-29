@@ -10,7 +10,7 @@ function makeLocal() {
     return {
         calls: new Array(),
         onChange: function(cb) {this.onChangeCB=cb;},
-        setAnyways: function(data, after) {this.calls.push([data,after]);},
+        setAnyways: function(data) {this.calls.push(data);},
         setIfStill: function(oldVersion, newVersion, data, after) {
             throw new Error("not implemented yet");
         }
@@ -97,28 +97,17 @@ exports["test client"] = function(assert, done) {
     assert.equal(local_B.calls.length, 0);
     assert.equal(broadcast_B.calls.length, 0);
 
-    // TODO: a form in which B hears about the server version before it hears
-    // about its ill-fated attempt to set the initial version. This form
-    // makes (and fails) the initial set before it hears the broadcast of A.
-
     // B encounters an existing server value, and our merge function clobbers
     // the old data
     const KVB = {key: "valueB"};
     local_B.onChangeCB(KVB);
     assert.equal(broadcast_B.calls.length, 0);
     assert.equal(local_B.calls.length, 1);
-    assert.deepEqual(local_B.calls[0][0], KV2);
-    var cb = local_B.calls[0][1];
+    assert.deepEqual(local_B.calls[0], KV2);
     clear(local_B.calls);
     assert.equal(merges.length, 1);
     assert.equal(merges[0].theirs.getSignedVerhash(), v2);
     clear(merges);
-
-    // ack the local change, which updates B to match the "merged" (i.e.
-    // clobbered) version.
-    cb(null, "dummy");
-    assert.equal(broadcast_B.calls.length, 0);
-    assert.equal(local_B.calls.length, 0);
 
     // Now reflect back the local change. Because this matches the current
     // server version, this should not propagate any further.
@@ -152,13 +141,8 @@ exports["test client"] = function(assert, done) {
     L.log(broadcast_B.calls);
     assert.equal(local_B.calls.length, 1);
     assert.equal(broadcast_B.calls.length, 0);
-    assert.deepEqual(local_B.calls[0][0], KV3);
-    cb = local_B.calls[0][1];
+    assert.deepEqual(local_B.calls[0], KV3);
     clear(local_B.calls);
-    // ack B's set
-    cb(null, "dummy");
-    assert.equal(local_B.calls.length, 0);
-    assert.equal(broadcast_B.calls.length, 0);
     // reflect B's set
     local_B.onChangeCB(KV3);
     assert.equal(local_B.calls.length, 0);
