@@ -165,7 +165,7 @@ exports["test server versions"] = function(assert, done) {
 
     var v2_verhash = pcrypto.computeVerhash({"key1": "encval1",
                                              "key2": "encval2"});
-    var v2_sighash = pcrypto.signVerhash(signkey, 1, v2_verhash);
+    var v2_sighash = pcrypto.signVerhash(signkey, 2, v2_verhash);
     var nv2 = vs.createNewVersion(v2_sighash);
     nv2.setKEV("key1", "encval1");
     nv2.setKEV("key2", "encval2");
