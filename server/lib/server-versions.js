@@ -9,6 +9,7 @@ const Set = require("set-component");
  */
 
 function Version(store, seqnum, signedVerhash, KEVs) {
+    this.getSeqnum = this.getSeqnum.bind(this);
     this.getVerhash = this.getVerhash.bind(this);
     this.getSignedVerhash = this.getSignedVerhash.bind(this);
     this.iterKEVs = this.iterKEVs.bind(this);
@@ -24,6 +25,7 @@ function Version(store, seqnum, signedVerhash, KEVs) {
     L.log("SV VERHASH", this._verhash);
 }
 
+Version.prototype.getSeqnum = function() {return this._seqnum;};
 Version.prototype.getVerhash = function() {return this._verhash;};
 Version.prototype.getSignedVerhash = function() {return this._signedVerhash;};
 Version.prototype.iterKEVs = function() {
@@ -187,25 +189,30 @@ CurrentVersion.prototype.replaceVersion = function(toVersion) {
     return toVersion;
 };
 
-CurrentVersion.prototype.updateVersion = function(fromVerhash, toVersion) {
-    L.log("entering CurrentVersion.updateVersion");
+// returns error string, or null for success
+CurrentVersion.prototype.updateVersion = function(fromSignedVerhash, toVersion) {
+    L.log("entering CurrentVersion.updateVersion", fromSignedVerhash, toVersion, this._currentVersion);
     if (!toVersion instanceof Version)
         throw new Error("must provide a Version instance");
     var old = this._currentVersion;
-    var oldVerhash = (old && old.getVerhash()) || null;
-    if (oldVerhash === fromVerhash) {
-        // consider requiring new seqnum > fromSeqnum? ==old+1?
-        // or just let clients set whatever they want
-        this._currentVersion = toVersion;
-        if (old && old !== toVersion)
-            this._store.free(old);
-        L.log(" CurrentVersion.updateVersion update success");
-        return toVersion;
-    } else {
-        //throw new Error("out of date");
-        L.log(" CurrentVersion.updateVersion update out-of-date");
-        return this._currentVersion;
-    }
+    var oldSignedVerhash = (old && old.getSignedVerhash()) || null;
+    if (oldSignedVerhash !== fromSignedVerhash)
+        return "out of date";
+    var oldSeqnum = 0;
+    if (old)
+        oldSeqnum = pcrypto.extractVerhash(oldSignedVerhash).seqnum;
+    var newSeqnum = toVersion.getSeqnum();
+    L.log(" seqnums:", oldSignedVerhash, oldSeqnum, " -> ", newSeqnum);
+    // requiring new seqnum be one greater than old seqnum
+    // consider just letting clients set whatever they want
+    if (newSeqnum !== oldSeqnum+1)
+        return "new seqnum is wrong cur="+oldSeqnum+" want="+(oldSeqnum+1)+" got="+newSeqnum;
+
+    this._currentVersion = toVersion;
+    if (old && old !== toVersion)
+        this._store.free(old);
+    L.log(" CurrentVersion.updateVersion update success");
+    return null;
 };
 
 exports.CurrentVersion = CurrentVersion;

@@ -17,6 +17,7 @@ function Server() {
     this._clients = {}; // maps client-id to verhash
 }
 
+// TODO: wrap the whole dispatcher in a try/catch, return errors to client
 Server.prototype.messageReceived = function(msg) {
     // msg is a de-JSONed object
     var resp;
@@ -32,7 +33,6 @@ Server.prototype.messageReceived = function(msg) {
     }
 
     if (msg.type === "push") {
-        var curVerhash = (cur && cur.getVerhash()) || null;
         var curSignedVerhash = (cur && cur.getSignedVerhash()) || null;
         if (msg.from != curSignedVerhash) {
             L.log("OUTOFDATE", curSignedVerhash);
@@ -53,9 +53,12 @@ Server.prototype.messageReceived = function(msg) {
         if (msg.upto === "END") {
             var inboundDeltas = r.deltas;
             delete this._incomingVersions[msg.to];
-            this.applyDelta(msg.from, msg.to, inboundDeltas);
-            resp = { type: "ok" };
-            return resolve(resp);
+            var err = this.applyDelta(msg.from, msg.to, inboundDeltas);
+            if (err) {
+                resp = { type: "bad-seqnum",
+                         error: err };
+                return resolve(resp);
+            }
         }
         resp = { type: "ok" };
         return resolve(resp);
@@ -125,8 +128,7 @@ Server.prototype.applyDelta = function(from, to, deltas) {
         else
             throw new Error("weird delta command: "+delta[1]);
     });
-    var oldVerhash = from && pcrypto.extractVerhash(from).verhash;
-    this._cv.updateVersion(oldVerhash, nv.close());
+    return this._cv.updateVersion(from, nv.close()); // error string, or null
 };
 
 exports.Server = Server;
